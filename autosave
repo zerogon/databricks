@@ -1,0 +1,56 @@
+Sub SaveAttachmentsToDisk(MyMail As MailItem)
+    Dim objAtt As Attachment
+    Dim fso As Object
+    Dim tempPath As String
+    Dim tempFile As String
+    Dim attSize As Long
+    Dim excludedSizes As Variant
+    Dim i As Integer
+    Dim isExcluded As Boolean
+    Dim saveFolder As String
+    Dim subFolder As String
+    Dim senderName As String
+    Dim fileName As String
+
+    ' 제외할 파일 크기 목록
+    excludedSizes = Array(9647, 12345, 67890)
+
+    Set fso = CreateObject("Scripting.FileSystemObject")
+    tempPath = Environ("TEMP") & "\"
+
+    senderName = MyMail.SenderName
+    subFolder = Format(MyMail.ReceivedTime, "yyyy-mm-dd") & "_" & senderName
+    saveFolder = "C:\Attachments\" & subFolder
+
+    If Dir(saveFolder, vbDirectory) = "" Then MkDir saveFolder
+
+    For Each objAtt In MyMail.Attachments
+        fileName = objAtt.FileName
+        tempFile = tempPath & fileName
+
+        ' 임시 저장
+        objAtt.SaveAsFile tempFile
+
+        ' 크기 측정
+        attSize = fso.GetFile(tempFile).Size
+
+        ' 크기 비교
+        isExcluded = False
+        For i = LBound(excludedSizes) To UBound(excludedSizes)
+            If attSize = excludedSizes(i) Then
+                isExcluded = True
+                Exit For
+            End If
+        Next i
+
+        ' 제외 대상이 아니면 실제 폴더로 저장
+        If Not isExcluded Then
+            objAtt.SaveAsFile saveFolder & "\" & fileName
+        End If
+
+        ' 임시 파일 삭제
+        On Error Resume Next
+        Kill tempFile
+        On Error GoTo 0
+    Next
+End Sub
